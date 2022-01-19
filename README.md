@@ -1,1 +1,1 @@
-# EEG_real_time_seizure_detection
+# Real Time Seizure Detection based on Electroencephalogram
