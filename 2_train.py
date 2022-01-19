@@ -1,4 +1,4 @@
-# Copyright (c) 2022, Kwanhyung Lee, AITRICS. All rights reserved.
+# Copyright (c) 2022, Kwanhyung Lee, Hyewon Jeong, Seyun Kim AITRICS. All rights reserved.
 #
 # Licensed under the MIT License;
 # you may not use this file except in compliance with the License.
