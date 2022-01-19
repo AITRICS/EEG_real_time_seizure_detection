@@ -1,0 +1,17 @@
+pyedflib
+scipy
+numpy
+pandas
+matplotlib
+sklearn
+pyyaml
+openpyxl
+tqdm
+tensorboardX
+xlrd==1.2.0
+torchsummary
+speechpy
+grad-cam
+opencv-python
+ttach
+hyperopt
