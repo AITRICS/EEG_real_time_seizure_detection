@@ -14,7 +14,7 @@ This is the repository for "Real-Time Seizure Detection using EEG: A Comprehensi
 
 ## Concept Figure
 We downsample the EEG signal and extract features. The models detect whether ictal / non-ictal signal appears within the 4-second sliding window input. We present an example case with Raw EEG signal but other signal feature extractors can also be applied in the pipeline.
-![concpet](./images/concept.jpg)
+![concpet](./images/Concept.jpg)
 
 ## Requirements
 *   [PyTorch 1.8.1+cu102](http://pytorch.org/)
