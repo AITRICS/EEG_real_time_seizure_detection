@@ -346,9 +346,6 @@ def get_data_preprocessed(args, mode="train"):
         
         args.fsr_sr_ratio = (args.sample_rate // args.feature_sample_rate)
 
-        args.multiclass_sig_maxlen = args.multiclassification_max_sample_len * args.sample_rate
-        args.multiclass_label_maxlen = args.multiclassification_max_sample_len * args.feature_sample_rate
-
 
     with open(train_dir[0], 'rb') as _f:
         data_pkl = pkl.load(_f)

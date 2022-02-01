@@ -1,4 +1,3 @@
 data_directory: 
-data_path: /nfs/banner/ext01/shared/edf/preprocessed_data
-dir_result: /nfs/jarvis/ext01/destin
-
+    data_path: /mnt/aitrics_ext/ext01/destin
+dir_result: /home/destin/result
