@@ -69,6 +69,9 @@ class Logger:
         # results
         self.test_results = {}
 
+        self.pred_results = []
+        self.ans_results = []
+
 
     def log_tqdm(self, epoch, step, pbar):
         tqdm_log = "Epochs: {}, Iteration: {}, Loss: {}".format(str(epoch), str(step), str(self.loss / step))
@@ -173,7 +176,7 @@ class Logger:
 
     def test_result_only(self):
 
-        if self.args.task_type == "binary":
+        if self.args.task_type == "binary" or self.args.task_type == "binary_noslice":
             result, tpr, fnr, tnr, fpr = self.evaluator.performance_metric_binary()
 
             os.system("echo  \'##### Test results #####\'")

@@ -35,7 +35,7 @@ class LFCC_FEATURE(nn.Module):
                                     n_filter = 32,
                                     f_min = 0.0,    # 0 Hz ~
                                     f_max = 100,     # ~ 60Hz
-                                    n_lfcc = 8,    # 15 coefficietns
+                                    n_lfcc = 8,    # 8 coefficietns
                                     dct_type = 2, 
                                     norm = 'ortho', 
                                     log_lf = False,

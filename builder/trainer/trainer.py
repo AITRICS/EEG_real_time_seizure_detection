@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import random
 import numpy as np
@@ -24,6 +23,35 @@ import matplotlib.pyplot as plt
 from builder.utils.nn_calibration import *
 from builder.utils.nn_calibration import _ECELoss
 
+def plot_eeg_similarity_map(mma, sample, n_head):
+    print("mma: ", mma)
+    sample = sample.permute(1,0)
+    # plot_head_map(att_map[0].cpu().data.numpy(), label, label)
+    label = ["fp1-f7", "fp2-f8", "f7-t3", "f8-t4", "t3-t5", "t4-t6", "t5-o1", "t6-o2", "t3-c3", "c4-t4", "c3-cz", "cz-c4", "fp1-f3", "fp2-f4", "f3-c3", "f4-c4", "c3-p3", "c4-p4", "p3-o1", "p4-o2"]
+    
+    plt.figure()
+    for idx, label_name in enumerate(label):
+        plt.subplot(20,1,idx+1)
+        plt.plot(sample[idx].detach().cpu().numpy())
+        plt.legend(label_name)
+    plt.show()
+
+    for i in range(n_head):
+        # plt.subplots(4,1,i+1)
+        fig, ax = plt.subplots()
+        # ax[0][1].pcolor(mma, cmap=plt.cm.Blues)
+        heatmap = ax.pcolor(mma[i], cmap=plt.cm.Blues)
+        ax.set_xticks(np.arange(20) + 0.5, minor=False)
+        ax.set_yticks(np.arange(20) + 0.5, minor=False)
+        ax.set_xlim(0, 20)
+        ax.set_ylim(0, 20)
+        ax.invert_yaxis()
+        ax.xaxis.tick_top()
+        ax.set_xticklabels(label, minor=False)
+        ax.set_yticklabels(label, minor=False)
+        plt.xticks(rotation=45)
+        plt.show()
+    exit(1)
 
 def sliding_window_v1(args, iteration, train_x, train_y, seq_lengths, target_lengths, model, logger, device, scheduler=None, optimizer=None, criterion=None, signal_name_list=None, flow_type="train"):
     # target_lengths_tensor = torch.Tensor(target_lengths)
@@ -92,6 +120,8 @@ def sliding_window_v1(args, iteration, train_x, train_y, seq_lengths, target_len
             optimizer.zero_grad()
 
         logits, maps = model(seq_slice)
+        # print("maps: ", maps)
+        # exit(1)
         logits = logits.type(torch.FloatTensor)
         
         if flow_type == "train":
@@ -113,7 +143,27 @@ def sliding_window_v1(args, iteration, train_x, train_y, seq_lengths, target_len
 
         else:
             
+            if args.localization: 
+                focal_list = ["2"]
+                target_localization_list = [pat_idx for pat_idx, pat_info in enumerate(signal_name_list) if pat_info.split("_")[-2] in focal_list]
+                n_head = 4
+                n_layers = 4
+                for lay_idx in range(n_layers):
+                    for map_idx in range(args.batch_size):
+                        if map_idx in target_localization_list:
+                            print("Patient info: ", signal_name_list[map_idx])
+                            print(maps.shape)
+                            print(maps[lay_idx].shape)
+                            plot_eeg_similarity_map(maps[lay_idx][map_idx*n_head:map_idx*n_head+n_head, :, :].cpu().data.numpy(), seq_slice[map_idx].squeeze(0), n_head)
+
+            if args.calibration:
+                model.temperature_scaling.collect_logits(logits)
+                model.temperature_scaling.collect_labels(final_target)
+                
             proba = nn.functional.softmax(logits, dim=1)
+            if args.batch_size == 1:
+                logger.pred_results.append(proba[0])
+                logger.ans_results.append(final_target.item())
             if args.batch_size == 1:
                 final_target = final_target.unsqueeze(0)
             loss = criterion(logits, final_target)

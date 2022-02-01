@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 # import shap
 # import lime
@@ -40,6 +39,11 @@ class Evaluator(object):
         
         self.probability_list = []
         self.final_target_list = []
+
+        self.picked_tnrs = []
+        self.picked_tprs = []
+
+        self.seizurewise_list = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
 
     def binary_normalize(self, i):
         proba_list = [i[0], max(i[1:])]
@@ -83,17 +87,16 @@ class Evaluator(object):
         print("Best threshold is: ", thresholds[best_threshold])
 
         tnr_list = list(tnr)
-        picked_tnrs = []
-        picked_tprs = []
+
         for tnr_one in self.args.tnr_for_margintest:
             picked_tnr = list([0 if x< tnr_one else x for x in tnr_list])
             picked_tnr_threshold = np.argmax(tpr + picked_tnr)        
             self.thresholds_margintest.append(thresholds[picked_tnr_threshold])
-            picked_tnrs.append(np.round(tnr[picked_tnr_threshold], decimals=4))
-            picked_tprs.append(np.round(tpr[picked_tnr_threshold], decimals=4))
-        print("TNRS: ", picked_tnrs)
-        print("TPRS: ", picked_tprs)
-        print("Selected Thresholds: ", self.thresholds_margintest)
+            self.picked_tnrs.append(np.round(tnr[picked_tnr_threshold], decimals=4))
+            self.picked_tprs.append(np.round(tpr[picked_tnr_threshold], decimals=4))
+        # print("TNRS: ", self.picked_tnrs)
+        # print("TPRS: ", self.picked_tprs)
+        # print("Selected Thresholds: ", self.thresholds_margintest)
         
         if self.args.seizure_wise_eval_for_binary:
             indx_by_seiz = [[], [], [], [], [], [], [], []]
@@ -138,7 +141,7 @@ class Evaluator(object):
                 y_true_multi_array = np.argmax(trues, axis=1)
                 f1 = 0
                 for i in range(1, 200):
-                    threshold = 1. / i
+                    threshold = float(i) / 200
                     temp_output = np.array(preds[:,1])
                     temp_output[temp_output>=threshold] = 1
                     temp_output[temp_output<threshold] = 0
@@ -146,7 +149,15 @@ class Evaluator(object):
                     if temp_score > f1:
                         f1 = temp_score
                 f1 = np.round(f1, decimals=4)
-                print("Seizure:{} - auc:{} apr:{} f1:{}".format(self.args.seizure_to_num_inv[str(q+1)], str(auc), str(apr), str(f1)))
+                fpr_seiz, tpr_seiz, thresholds_seiz = roc_curve(y_true_multi_array, preds[:,1], pos_label=1)
+                fnr_seiz = 1 - tpr_seiz 
+                tnr_seiz = 1 - fpr_seiz
+                best_threshold_seiz = np.argmax(tpr_seiz + tnr_seiz)
+                print("Seizure:{} - auc:{} apr:{} tpr:{} tnr:{}".format(self.args.seizure_to_num_inv[str(q+1)], str(auc), str(apr), str(tpr_seiz[best_threshold_seiz]), str(tnr_seiz[best_threshold_seiz])))
+                self.seizurewise_list[q][0]=auc
+                self.seizurewise_list[q][1]=apr
+                self.seizurewise_list[q][2]=tpr_seiz[best_threshold_seiz]
+                self.seizurewise_list[q][3]=tnr_seiz[best_threshold_seiz]
 
         if self.args.margin_test:
             target_stack = torch.stack(self.final_target_list)
@@ -154,8 +165,10 @@ class Evaluator(object):
                 for threshold_idx, threshold in enumerate(self.thresholds_margintest):
                     pred_stack = torch.stack(self.probability_list)
                     pred_stack = (pred_stack > threshold).int()
+                    print("1: ", pred_stack.shape)
+                    print("2: ", target_stack.shape)
                     rise_true, rise_pred_correct, fall_true, fall_pred_correct = binary_detector_evaluator(pred_stack, target_stack, margin)
-                    print("Margin: {}, Threshold: {}, TPR: {}, TNR: {}".format(str(margin), str(threshold), str(picked_tprs[threshold_idx]), str(picked_tnrs[threshold_idx])))
+                    print("Margin: {}, Threshold: {}, TPR: {}, TNR: {}".format(str(margin), str(threshold), str(self.picked_tprs[threshold_idx]), str(self.picked_tnrs[threshold_idx])))
                     # print("rise_t:{}, rise_cor:{}, fall_t:{}, fall_cor:{}".format(str(rise_true), str(rise_pred_correct), str(fall_true), str(fall_pred_correct)))    
                     print("rise_accuarcy:{}, fall_accuracy:{}".format(str(np.round((rise_pred_correct/float(rise_true)), decimals=4)), str(np.round((fall_pred_correct/float(fall_true)), decimals=4))))
 
@@ -245,6 +258,7 @@ class Evaluator(object):
         self.thresholds_margintest = []
         self.probability_list = []
         self.final_target_list = []
+        self.seizurewise_list = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
 
 
 
