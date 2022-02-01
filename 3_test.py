@@ -104,9 +104,9 @@ for name in names:
             else:
                 print("Selected trainer is not prepared yet...")
                 exit(1)
-            iteration_end = time.time()
             
             if not args.ignore_model_speed:
+                iteration_end = time.time()
                 print("1: ", num_windows)
                 print("used device: ", device)
                 print("the number of cpu threads: {}".format(torch.get_num_threads()))
