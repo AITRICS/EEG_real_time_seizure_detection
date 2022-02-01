@@ -4,11 +4,11 @@ This is the repository for "Real-Time Seizure Detection using EEG: A Comprehensi
 
 - If you have used our code or referred to our result in your research, please cite:
 ```
-@article{leerealtime2022,
-  author = {Lee, Kwanhyung and Jeong, Hyewon and Kim, Seyun and Yang, Donghwa and Kang, Hoon-Chul and Choi, Edward},
-  title = {Real-Time Seizure Detection using EEG: A Comprehensive Comparison of Recent Approaches under a Realistic Setting},
-  booktitle = {Preprint},
-  year = {2022}
+@article{lee2022real,
+  title={Real-Time Seizure Detection using EEG: A Comprehensive Comparison of Recent Approaches under a Realistic Setting},
+  author={Lee, Kwanhyung and Jeong, Hyewon and Kim, Seyun and Yang, Donghwa and Kang, Hoon-Chul and Choi, Edward},
+  journal={arXiv preprint arXiv:2201.08780},
+  year={2022}
 }
 ```
 
