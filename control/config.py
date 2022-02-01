@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 
 # General Parameters
 parser.add_argument('--seed', type=int, default=10)
-parser.add_argument('--seed-list', type=list, default=[0, 1004, 911, 2021])
+parser.add_argument('--seed-list', type=list, default=[0])
 # parser.add_argument('--seed-list', type=list, default=[10])
 parser.add_argument('--device', type=int, default=1, nargs='+')
 parser.add_argument('--cpu', type=int, default=0)
@@ -126,12 +126,6 @@ parser.add_argument('--task-type', '-tt', type=str, default='binary', choices=['
 
 parser.add_argument('--binary-sampler-type', type=str, default="6types", choices=["6types", "30types"])
 parser.add_argument('--dev-bckg-num', type=int, default=10)
-
-parser.add_argument('--multiclassification-max-sample-len', type=int, default=200, help='unit is second. 180 == 3 minutes')
-parser.add_argument('--multiclassification-preseiz-maxlen', type=int, default=15, help='unit is second')
-parser.add_argument('--multiclassification-preseiz-minlen', type=int, default=5, help='unit is second')
-parser.add_argument('--multiclassification-postseiz-maxlen', type=int, default=5, help='unit is second')
-parser.add_argument('--multiclassification-postseiz-minlen', type=int, default=0, help='unit is second')
 
 parser.add_argument('--get-model-summary', type=bool, default=False, help="print model summary before training")
 
