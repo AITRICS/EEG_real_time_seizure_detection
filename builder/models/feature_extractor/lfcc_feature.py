@@ -1,6 +1,6 @@
-# Copyright (c) 2022, Kwanhyung Lee. All rights reserved.
+# Copyright (c) 2022, Kwanhyung Lee, AITRICS. All rights reserved.
 #
-# Licensed under the MIT License; 
+# Licensed under the MIT License;
 # you may not use this file except in compliance with the License.
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import platform
 import numpy as np
 
@@ -22,8 +21,8 @@ import torchaudio
 class LFCC_FEATURE(nn.Module):
     def __init__(self,
             sample_rate: int = 200,
-            frame_length: int = 8,
-            frame_shift: int = 4,
+            frame_length: int = 16,
+            frame_shift: int = 8,
             feature_extract_by: str = 'kaldi'):
         super(LFCC_FEATURE, self).__init__()
 
@@ -35,8 +34,8 @@ class LFCC_FEATURE(nn.Module):
         self.transforms = torchaudio.transforms.LFCC(sample_rate = 200, 
                                     n_filter = 32,
                                     f_min = 0.0,    # 0 Hz ~
-                                    f_max = 60,     # ~ 60Hz
-                                    n_lfcc = 15,    # 15 coefficietns
+                                    f_max = 100,     # ~ 60Hz
+                                    n_lfcc = 8,    # 15 coefficietns
                                     dct_type = 2, 
                                     norm = 'ortho', 
                                     log_lf = False,
