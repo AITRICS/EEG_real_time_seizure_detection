@@ -1,6 +1,6 @@
-# Copyright (c) 2022, Kwanhyung Lee. All rights reserved.
+# Copyright (c) 2022, Kwanhyung Lee, AITRICS. All rights reserved.
 #
-# Licensed under the MIT License; 
+# Licensed under the MIT License;
 # you may not use this file except in compliance with the License.
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -8,15 +8,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import numpy as np
 import torch.nn.functional as F
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import importlib
 from builder.models.feature_extractor.psd_feature import *
 from builder.models.feature_extractor.spectrogram_feature_binary import *
 from builder.models.feature_extractor.sincnet_feature import SINCNET_FEATURE
+from builder.models.feature_extractor.lfcc_feature import LFCC_FEATURE
 
 class CNN1D_LSTM_V8(nn.Module):
         def __init__(self, args, device):
@@ -31,7 +32,7 @@ class CNN1D_LSTM_V8(nn.Module):
                 
                 self.feature_extractor = args.enc_model
 
-                if self.feature_extractor == "raw":
+                if self.feature_extractor == "raw" or self.feature_extractor == "downsampled":
                         pass
                 else:
                         self.feat_models = nn.ModuleDict([
@@ -39,6 +40,7 @@ class CNN1D_LSTM_V8(nn.Module):
                                 ['psd2', PSD_FEATURE2()],
                                 ['stft1', SPECTROGRAM_FEATURE_BINARY1()],
                                 ['stft2', SPECTROGRAM_FEATURE_BINARY2()],
+                                ['LFCC', LFCC_FEATURE()],
                                 ['sincnet', SINCNET_FEATURE(args=args,
                                                         num_eeg_channel=self.num_data_channel) # padding to 0 or (kernel_size-1)//2
                                                         ]])
@@ -46,13 +48,15 @@ class CNN1D_LSTM_V8(nn.Module):
 
                 if args.enc_model == "psd1" or args.enc_model == "psd2":
                         self.feature_num = 7
+                elif args.enc_model == "LFCC":
+                        self.feature_num = 8
                 elif args.enc_model == "sincnet":
                         self.feature_num = args.cnn_channel_sizes[args.sincnet_layer_num-1]
                 elif args.enc_model == "stft1":
                         self.feature_num = 50
                 elif args.enc_model == "stft2":
                         self.feature_num = 100
-                elif args.enc_model == "raw":
+                elif args.enc_model == "raw" or args.enc_model == "downsampled":
                         self.feature_num = 1
                 
                 self.conv1dconcat_len = self.feature_num * self.num_data_channel
@@ -79,6 +83,12 @@ class CNN1D_LSTM_V8(nn.Module):
                                 self.activations[activation],
                                 nn.Dropout(self.dropout),
                 )
+                def conv1d_bn_nodr(inp, oup, kernel_size, stride, padding):
+                        return nn.Sequential(
+                                nn.Conv1d(inp, oup, kernel_size=kernel_size, stride=stride, padding=padding),
+                                nn.BatchNorm1d(oup),
+                                self.activations[activation],
+                )
 
                 if args.enc_model == "raw":
                         self.features = nn.Sequential(
@@ -94,13 +104,38 @@ class CNN1D_LSTM_V8(nn.Module):
                         nn.MaxPool1d(kernel_size=4, stride=4),
                         conv1d_bn(128, 256, 9, 2, 4),
                         )
-                else: 
+                elif args.enc_model == "psd1" or args.enc_model == "psd2":
                         self.features = nn.Sequential(
-                        conv1d_bn(self.conv1dconcat_len,  64, 21, 2, 10),
-                        conv1d_bn(64, 128, 21, 2, 10),
-                        nn.MaxPool1d(kernel_size=2, stride=2),
-                        conv1d_bn(128, 256, 9, 1, 4),
+                                conv1d_bn(self.conv1dconcat_len,  64, 21, 2, 10), 
+                                conv1d_bn(64, 128, 21, 2, 10),
+                                nn.MaxPool1d(kernel_size=2, stride=2),
+                                conv1d_bn(128, 256, 9, 1, 4),
                         )
+                elif args.enc_model == "LFCC":
+                        self.features = nn.Sequential(
+                                conv1d_bn(self.conv1dconcat_len,  64, 21, 2, 10), 
+                                conv1d_bn(64, 128, 21, 2, 10),
+                                nn.MaxPool1d(kernel_size=2, stride=2),
+                                conv1d_bn(128, 256, 9, 1, 4),
+                        )
+                elif args.enc_model == "downsampled":
+                        self.conv1d_200hz = conv1d_bn_nodr(self.conv1dconcat_len,  32, 51, 4, 25)
+                        self.conv1d_100hz = conv1d_bn_nodr(self.conv1dconcat_len,  16, 51, 2, 25)
+                        self.conv1d_50hz = conv1d_bn_nodr(self.conv1dconcat_len,  16, 51, 1, 25)
+
+                        self.features = nn.Sequential(
+                                nn.MaxPool1d(kernel_size=4, stride=4),
+                                conv1d_bn(64, 128, 21, 2, 10),
+                                conv1d_bn(128, 256, 9, 1, 4),
+                        )
+                else:
+                        self.features = nn.Sequential(
+                                conv1d_bn(self.conv1dconcat_len,  64, 21, 2, 10), 
+                                conv1d_bn(64, 128, 21, 2, 10),
+                                nn.MaxPool1d(kernel_size=2, stride=2),
+                                conv1d_bn(128, 256, 9, 1, 4),
+                        )
+
           
                 self.agvpool = nn.AdaptiveAvgPool1d(1)
 
@@ -120,7 +155,12 @@ class CNN1D_LSTM_V8(nn.Module):
                 
         def forward(self, x):
                 x = x.permute(0, 2, 1)
-                if self.feature_extractor != "raw":
+                if self.feature_extractor == "downsampled":
+                        x_200 = self.conv1d_200hz(x)
+                        x_100 = self.conv1d_100hz(x[:,:,::2])
+                        x_50 = self.conv1d_50hz(x[:,:,::4])
+                        x = torch.cat((x_200, x_100, x_50), dim=1)
+                elif self.feature_extractor != "raw":
                         x = self.feat_model(x)
                         x = torch.reshape(x, (self.args.batch_size, self.conv1dconcat_len, x.size(3)))
                 x = self.features(x)
