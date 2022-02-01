@@ -1,14 +1,3 @@
-# Copyright (c) 2022, Kwanhyung Lee, Hyewon Jeong, Seyun Kim AITRICS. All rights reserved.
-#
-# Licensed under the MIT License;
-# you may not use this file except in compliance with the License.
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import os
 import yaml
 import argparse
@@ -20,11 +9,11 @@ seed_list = [0, 1004, 911, 2021, 119]
 parser = argparse.ArgumentParser()
 
 # General Parameters
-parser.add_argument('--seed', type=int, default=0)
-parser.add_argument('--seed-list', type=list, default=[10, 1004, 911, 2021, 119])
+parser.add_argument('--seed', type=int, default=10)
+parser.add_argument('--seed-list', type=list, default=[0, 1004, 911, 2021])
+# parser.add_argument('--seed-list', type=list, default=[10])
 parser.add_argument('--device', type=int, default=1, nargs='+')
-# parser.add_argument('--cpu', default=False, action='store_true')
-parser.add_argument('--cpu', type=int, default=1)
+parser.add_argument('--cpu', type=int, default=0)
 parser.add_argument('--gpus', type=int, default=1)
 parser.add_argument('--reset', default=False, action='store_true')
 parser.add_argument('--project-name', type=str, default="test")
@@ -80,10 +69,11 @@ parser.add_argument('--band-stop-filter-min', type=float, default=2.8)
 parser.add_argument('--band-stop-filter-max', type=float, default=82.5)
 
 # Model Parameters
+# parser.add_argument('--trainer', type=str, default="binary_detector", choices=['binary_detector', 'multi_classification', 'prediction']) #structure name
 parser.add_argument('--model', type=str, default="cnn2d_lstm_v1") #model name
 parser.add_argument('--hyperopt-model-name', type=str, default="xgboost_classification") #model name
 
-parser.add_argument('--enc-model', type=str, default="sincnet", choices= ['stft1', 'stft2', 'psd1', 'psd2', 'sincnet', 'raw', 'saliency'])
+parser.add_argument('--enc-model', type=str, default="sincnet", choices= ['stft1', 'stft2', 'psd1', 'psd2', 'sincnet', 'raw', 'saliency', 'LFCC', 'downsampled'])
 parser.add_argument('--sincnet-bandnum', type=int, default=20)
 parser.add_argument('--sincnet-kernel-size', type=int, default=81, help="max is 101")
 parser.add_argument('--sincnet-input-normalize', type=str, default="none", choices=["none","layernorm","batchnorm"])
@@ -111,7 +101,6 @@ parser.add_argument('--centerloss-weight', type=float, default=0.3)
 # Visualize / Logging Parameters
 parser.add_argument('--log-iter', type=int, default=10)
 parser.add_argument('--grad-cam', default=False, action='store_true')
-parser.add_argument('--ignore-model-speed', type=bool, default=False)
 
 # Test / Store Parameters
 parser.add_argument('--best', default=True, action='store_true')
@@ -120,8 +109,11 @@ parser.add_argument('--test-type', type=str, default="test", choices=["test"])
 parser.add_argument('--seizure-wise-eval-for-binary', type=bool, default=False)
 parser.add_argument('--margin-test', type=bool, default=False)
 parser.add_argument('--localization', type=bool, default=False)
-parser.add_argument('--margin-list', type=list, default=[1,2,3,4,5])
-parser.add_argument('--tnr-for-margintest', type=list, default=[1.0, 0.95, 0.9, 0.85, 0.8])
+# parser.add_argument('--start-margin', type=list, default=[1,2,3,4,5])
+# parser.add_argument('--end-margin', type=list, default=[1,2,3,4,5])
+parser.add_argument('--margin-list', type=list, default=[3,5])
+# parser.add_argument('--tnr-for-margintest', type=list, default=[1.0, 0.95, 0.9, 0.85, 0.8])
+parser.add_argument('--tnr-for-margintest', type=list, default=[0.95])
 parser.add_argument('--calibration', type=bool, default=False)
 
 # target groups options
@@ -130,7 +122,7 @@ parser.add_argument('--calibration', type=bool, default=False)
 # "4": '0':'bckg', '1':'gnsz_absz', '2':'fnsz_spsz_cpsz', '3':'tnsz', '4':'tcsz', '5':'mysz'
 parser.add_argument('--binary-target-groups', type=int, default=2, choices= [1, 2, 3])
 parser.add_argument('--eeg-type', type=str, default="bipolar", choices=["unipolar", "bipolar", "uni_bipolar"])
-parser.add_argument('--task-type', '-tt', type=str, default='binary', choices=['anomaly', 'multiclassification', 'binary'])       
+parser.add_argument('--task-type', '-tt', type=str, default='binary', choices=['anomaly', 'multiclassification', 'binary', 'binary_noslice'])       
 
 parser.add_argument('--binary-sampler-type', type=str, default="6types", choices=["6types", "30types"])
 parser.add_argument('--dev-bckg-num', type=int, default=10)
@@ -146,27 +138,48 @@ parser.add_argument('--get-model-summary', type=bool, default=False, help="print
 args = parser.parse_args()
 args.cnn_channel_sizes = [args.sincnet_bandnum, 10, 10]
 
-args.seiz_classes = ['gnsz', 'fnsz', 'spsz', 'cpsz', 'absz', 'tnsz', 'tcsz']
-args.seizure_to_num = {'gnsz':'1', 'fnsz':'2', 'spsz':'3', 'cpsz':'4', 'absz':'5', 'tnsz':'6', 'tcsz':'7'}
-args.seizure_to_num_inv = {'1':'gnsz', '2':'fnsz', '3':'spsz', '4':'cpsz', '5':'absz', '6':'tnsz', '7':'tcsz'}
+if args.task_type == "anomaly":
+    args.seiz_classes = ['gnsz', 'fnsz', 'spsz', 'cpsz', 'absz', 'tnsz', 'tcsz', 'mysz']
+    args.num_to_seizure = {'0':'patient_nor', '1':'non_patient_nor', '2':'gnsz', '3':'fnsz', '4':'spsz', '5':'cpsz', '6':'absz', '7':'tnsz', '8':'tcsz', '9':'mysz'}
+    args.label_group = "pre_pre-ict_label"
+    args.output_dim = len(args.seiz_classes)
+
+elif args.task_type == "multiclassification":
+    args.seiz_classes = ['gnsz', 'fnsz', 'spsz', 'cpsz', 'absz', 'tnsz', 'tcsz', 'mysz']
+    args.seiz_num = ['1', '2', '3', '4', '5', '6', '7', '8'] # exclude mysz
+    args.num_to_seizure = {'0':'gnsz', '1':'fnsz', '2':'spsz', '3':'cpsz', '4':'absz', '5':'tnsz', '6':'tcsz', '7':'mysz'}
+    args.label_group = "LABEL"
+    args.output_dim = len(args.seiz_num)
+
+elif args.task_type == "binary" or args.task_type == "binary_noslice":
+    # args.seiz_classes = ['gnsz', 'fnsz', 'spsz', 'cpsz', 'absz', 'tnsz', 'tcsz', 'mysz']
+    args.seiz_classes = ['gnsz', 'fnsz', 'spsz', 'cpsz', 'absz', 'tnsz', 'tcsz']
+    # args.seizure_to_num = {'gnsz':'1', 'fnsz':'2', 'spsz':'3', 'cpsz':'4', 'absz':'5', 'tnsz':'6', 'tcsz':'7', 'mysz':'8'}
+    args.seizure_to_num = {'gnsz':'1', 'fnsz':'2', 'spsz':'3', 'cpsz':'4', 'absz':'5', 'tnsz':'6', 'tcsz':'7'}
+    # args.seizure_to_num_inv = {'1':'gnsz', '2':'fnsz', '3':'spsz', '4':'cpsz', '5':'absz', '6':'tnsz', '7':'tcsz', '8':'mysz'}
+    args.seizure_to_num_inv = {'1':'gnsz', '2':'fnsz', '3':'spsz', '4':'cpsz', '5':'absz', '6':'tnsz', '7':'tcsz'}
     
-if args.binary_target_groups == 1:
-    args.label_group = "LABEL1"
-    args.output_dim = 8
-    args.num_to_seizure = {'1':'gnsz', '2':'fnsz', '3':'spsz', '4':'cpsz', '5':'absz', '6':'tnsz', '7':'tcsz'}
+    if args.binary_target_groups == 1:
+        args.label_group = "LABEL1"
+        args.output_dim = 8
+        args.num_to_seizure = {'1':'gnsz', '2':'fnsz', '3':'spsz', '4':'cpsz', '5':'absz', '6':'tnsz', '7':'tcsz'}
+    
+    elif args.binary_target_groups == 2:
+        args.label_group = "LABEL2"
+        args.output_dim = 2
+        # args.num_to_seizure = {'1':'gnsz_fnsz_spsz_cpsz_absz_tnsz_tcsz_mysz'}
+        args.num_to_seizure = {'1':'gnsz_fnsz_spsz_cpsz_absz_tnsz_tcsz'}
 
-elif args.binary_target_groups == 2:
-    args.label_group = "LABEL2"
-    args.output_dim = 2
-    args.num_to_seizure = {'1':'gnsz_fnsz_spsz_cpsz_absz_tnsz_tcsz'}
-
-elif args.binary_target_groups == 3:
-    args.label_group = "LABEL3"
-    args.output_dim = 6
-    args.num_to_seizure = {'1':'gnsz_absz', '2':'fnsz_spsz_cpsz', '3':'tnsz', '4':'tcsz', '5':'mysz'}
+    elif args.binary_target_groups == 3:
+        args.label_group = "LABEL3"
+        args.output_dim = 6
+        args.num_to_seizure = {'1':'gnsz_absz', '2':'fnsz_spsz_cpsz', '3':'tnsz', '4':'tcsz', '5':'mysz'}
+    else:
+        print("Select Correct disease target group...")
+        exit(1) 
 else:
     print("Select Correct disease target group...")
-    exit(1) 
+    exit(1)
 
 args.num_to_seizure_items = [v for k, v in args.num_to_seizure.items()]
 
