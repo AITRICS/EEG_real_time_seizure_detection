@@ -71,7 +71,7 @@ class Evaluator(object):
 
         f1 = 0
         for i in range(1, 200):
-            threshold = 1. / i
+            threshold = float(i) / 200
             temp_output = np.array(self.y_pred_multi[:,1])
             temp_output[temp_output>=threshold] = 1
             temp_output[temp_output<threshold] = 0

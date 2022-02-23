@@ -184,7 +184,7 @@ class Logger:
             os.system("echo  \'tpr: {}, fnr: {}, tnr: {}, fpr: {}\'".format(str(tpr), str(fnr), str(tnr), str(fpr)))
 
             # self.test_results.append("seed_case:{} -- auc: {}, apr: {}, f1_score: {}".format(str(self.args.seed), str(result[0]), str(result[1]), str(result[2])))
-            self.test_results = list([self.args.seed, result[0], result[1], result[2], tpr, tnr])
+            self.test_results = list([[self.args.seed, result[0], result[1], result[2]], tpr, tnr])
         else:
             result, result_aucs, result_aprs, result_f1scores, tprs, fnrs, tnrs, fprs, fdrs, ppvs = self.evaluator.performance_metric_multi()
 
