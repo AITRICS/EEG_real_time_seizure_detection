@@ -229,7 +229,8 @@ def get_data_preprocessed(args, mode="train"):
    
     print("Preparing data for bianry detector...")
     train_data_path = args.data_path + "/dataset-tuh_task-binary_datatype-train_v6"
-    dev_data_path = args.data_path + "/dataset-tuh_task-binary_datatype-dev_v6"
+    # dev_data_path = args.data_path + "/dataset-tuh_task-binary_datatype-dev_v6"
+    dev_data_path = args.data_path + "/dataset-tuh_task-binary_noslice_datatype-dev_v6"
     train_dir = search_walk({"path": train_data_path, "extension": ".pkl"})
     dev_dir = search_walk({"path": dev_data_path, "extension": ".pkl"})
     random.shuffle(train_dir)
@@ -270,11 +271,19 @@ def get_data_preprocessed(args, mode="train"):
 
     # val_list = ["00008527", "00008460", "00004671", "00009578", "00010062", "00009697", "00004087", "00006986", "00002289", "00010022", "00005479", "00009866", "00001640", "00005625", "00008889", "00010639", "00009842", "00010106", "00004594", "00000675", "00002297", "00005031", "00010547", "00008174", "00000795"]
     # test_list = ["00009044", "00006546", "00001981", "00009839", "00009570", "00008544", "00008453", "00007633", "00003306", "00005943", "00008479", "00008512", "00006059", "00010861", "00001770", "00001027", "00000629", "00000258", "00001278", "00003281", "00003635", "00005213", "00008550", "00006900", "00004151", "00001984"]
+    # # val_list = ["00008460", "00004671", "00009578", "00010062", "00009697", "00004087", "00006986", "00002289", "00010022", "00005479", "00009866", "00001640", "00005625", "00008889", "00010639", "00009842", "00010106", "00004594", "00000675", "00002297", "00005031", "00010547", "00008174", "00000795"]
+    # # test_list = ["00006546", "00001981", "00009839", "00009570", "00008544", "00008453", "00007633", "00003306", "00005943", "00008479", "00008512", "00006059", "00010861", "00001770", "00001027", "00000629", "00000258", "00001278", "00003281", "00003635", "00005213", "00008550", "00006900", "00004151", "00001984"]
     # for i in val_list:
     #     val_dict[i] = pat_info[i]
     # for i in test_list:
     #     test_dict[i] = pat_info[i]
-    
+    # # print(" ")
+    # # for i in val_dict:
+    # #     print("{}: {}".format(str(i), val_dict[i]))
+    # # print(" ")
+    # # for i in test_dict:
+    # #     print("{}: {}".format(str(i), test_dict[i]))
+    # # exit(1)
     # for i in val_dict:
     #     val_dir += val_dict[i][2]
     # for i in test_dict:
@@ -285,6 +294,7 @@ def get_data_preprocessed(args, mode="train"):
     test_dir = dev_dir[half_dev_num:]
     aug_val = ["0"] * len(val_dir)
     aug_test = ["0"] * len(test_dir)
+
 
     train_data = Detector_Dataset(args, data_pkls=train_dir, augment=aug_train, data_type="training dataset")
     class_sample_count = np.unique(train_data._type_list, return_counts=True)[1]
