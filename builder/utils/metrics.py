@@ -65,8 +65,8 @@ class Evaluator(object):
         self.y_true_multi = np.concatenate(self.y_true_multi, 0)
         self.y_pred_multi = np.concatenate(self.y_pred_multi, 0)
 
-        auc = roc_auc_score (self.y_true_multi, self.y_pred_multi)
-        apr = average_precision_score (self.y_true_multi, self.y_pred_multi)
+        auc = roc_auc_score (self.y_true_multi[:,1], self.y_pred_multi[:,1])
+        apr = average_precision_score (self.y_true_multi[:,1], self.y_pred_multi[:,1])
         y_true_multi_array = np.argmax(self.y_true_multi, axis=1)
 
         f1 = 0
@@ -136,8 +136,8 @@ class Evaluator(object):
                     continue
                 preds = np.array(lists_of_seizures_pred[q])
                 trues = np.array(lists_of_seizures_true[q])
-                auc = np.round(roc_auc_score(trues, preds), decimals=4)
-                apr = np.round(average_precision_score(trues, preds), decimals=4)
+                auc = np.round(roc_auc_score(trues[:,1], preds[:,1]), decimals=4)
+                apr = np.round(average_precision_score(trues[:,1], preds[:,1]), decimals=4)
                 y_true_multi_array = np.argmax(trues, axis=1)
                 f1 = 0
                 for i in range(1, 200):
