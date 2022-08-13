@@ -52,7 +52,7 @@ def label_sampling_tuh(labels, feature_samplerate):
 
 def generate_training_data_leadwise_tuh_train(file):
     sample_rate = GLOBAL_DATA['sample_rate']    # EX) 200Hz
-    file_name = ".".join(file.split(".")[:-1])  # EX) /nfs/banner/ext01/shared/edf/tuh_final/train/01_tcp_ar/072/00007235/s003_2010_11_20/00007235_s003_t000
+    file_name = ".".join(file.split(".")[:-1])  # EX) $PATH_TO_EEG/train/01_tcp_ar/072/00007235/s003_2010_11_20/00007235_s003_t000
     data_file_name = file_name.split("/")[-1]   # EX) 00007235_s003_t000
     signals, signal_headers, header = highlevel.read_edf(file)
     label_list_c = []
@@ -302,7 +302,7 @@ def generate_training_data_leadwise_tuh_train(file):
 
 def generate_training_data_leadwise_tuh_train_final(file):
     sample_rate = GLOBAL_DATA['sample_rate']    # EX) 200Hz
-    file_name = ".".join(file.split(".")[:-1])  # EX) /nfs/banner/ext01/shared/edf/tuh_final/train/01_tcp_ar/072/00007235/s003_2010_11_20/00007235_s003_t000
+    file_name = ".".join(file.split(".")[:-1])  # EX) $PATH_TO_EEG/train/01_tcp_ar/072/00007235/s003_2010_11_20/00007235_s003_t000
     data_file_name = file_name.split("/")[-1]   # EX) 00007235_s003_t000
     signals, signal_headers, header = highlevel.read_edf(file)
     label_list_c = []
@@ -546,7 +546,7 @@ def generate_training_data_leadwise_tuh_train_final(file):
 
 def generate_training_data_leadwise_tuh_dev(file):
     sample_rate = GLOBAL_DATA['sample_rate']    # EX) 200Hz
-    file_name = ".".join(file.split(".")[:-1])  # EX) /nfs/banner/ext01/shared/edf/tuh_final/train/01_tcp_ar/072/00007235/s003_2010_11_20/00007235_s003_t000
+    file_name = ".".join(file.split(".")[:-1])  # EX) $PATH_TO_EEG/train/01_tcp_ar/072/00007235/s003_2010_11_20/00007235_s003_t000
     data_file_name = file_name.split("/")[-1]   # EX) 00007235_s003_t000
     signals, signal_headers, header = highlevel.read_edf(file)
     label_list_c = []
@@ -767,7 +767,7 @@ def main(args):
                     'EEG C3', 'EEG C4', 'EEG CZ', 'EEG T3', 'EEG T4', 
                     'EEG P3', 'EEG P4', 'EEG O1', 'EEG O2', 'EEG T5', 'EEG T6', 'EEG PZ', 'EEG FZ']
 
-    eeg_data_directory = "/nfs/banner/ext01/shared/edf/tuh_final/{}".format(data_type)
+    eeg_data_directory = "$PATH_TO_EEG/{}".format(data_type)
     # eeg_data_directory = "/mnt/aitrics_ext/ext01/shared/edf/tuh_final/{}".format(data_type)
     
     if label_type == "tse":
