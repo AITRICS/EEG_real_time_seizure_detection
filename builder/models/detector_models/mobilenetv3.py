@@ -1,3 +1,5 @@
+# Code Reference : https://github.com/d-li14/mobilenetv3.pytorch
+
 # @InProceedings{Howard_2019_ICCV,
 # author = {Howard, Andrew and Sandler, Mark and Chu, Grace and Chen, Liang-Chieh and Chen, Bo and Tan, Mingxing and Wang, Weijun and Zhu, Yukun and Pang, Ruoming and Vasudevan, Vijay and Le, Quoc V. and Adam, Hartwig},
 # title = {Searching for MobileNetV3},
@@ -6,17 +8,6 @@
 # year = {2019}
 # }
 
-# @InProceedings{Li_2019_ICCV,
-# author = {Li, Duo and Zhou, Aojun and Yao, Anbang},
-# title = {HBONet: Harmonious Bottleneck on Two Orthogonal Dimensions},
-# booktitle = {The IEEE International Conference on Computer Vision (ICCV)},
-# month = {October},
-# year = {2019}
-# }
-
-# must specify eeg type
-# for lfcc and psd, might have to change conv1 values
-
 """
 Creates a MobileNetV3 Model as defined in:
 Andrew Howard, Mark Sandler, Grace Chu, Liang-Chieh Chen, Bo Chen, Mingxing Tan, Weijun Wang, Yukun Zhu, Ruoming Pang, Vijay Vasudevan, Quoc V. Le, Hartwig Adam. (2019).
@@ -24,15 +15,18 @@ Searching for MobileNetV3
 arXiv preprint arXiv:1905.02244.
 """
 import numpy as np
+import math
+
 import torch.nn.functional as F
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from torch.autograd import Variable
+
 from builder.models.feature_extractor.psd_feature import *
 from builder.models.feature_extractor.spectrogram_feature_binary import *
 from builder.models.feature_extractor.sincnet_feature import SINCNET_FEATURE
-import torch.nn as nn
-import math
+# from builder.utils.centerloss import CenterLoss
 
 
 __all__ = ['mobilenetv3_large', 'mobilenetv3_small']
@@ -96,8 +90,8 @@ class SELayer(nn.Module):
 
 def conv_3x3_bn(inp, oup, stride, is_psd):
     return nn.Sequential(
-        nn.Conv2d(inp, oup, 3, stride, 1, bias=False) if not is_psd
-                else nn.Conv2d(inp, oup, (1,7), (1,stride), (0,3), bias=False),
+        nn.Conv2d(inp, oup, (1,9), (1,stride), (0,4), bias=False) if not is_psd
+                else nn.Conv2d(inp, oup, (1,9), (1,stride), (0,4), bias=False),
         nn.BatchNorm2d(oup),
         h_swish()
     )
@@ -120,9 +114,7 @@ class InvertedResidual(nn.Module):
 
         if inp == hidden_dim:
            self.conv = nn.Sequential(
-                nn.Conv2d(hidden_dim, hidden_dim, kernel_size, stride, (kernel_size - 1) // 2, groups=hidden_dim, bias=False) if not is_psd 
-                                else nn.Conv2d(hidden_dim, hidden_dim, (1,kernel_size), (1,stride), (0,((kernel_size - 1) // 2)), groups=hidden_dim, bias=False),
-                nn.BatchNorm2d(hidden_dim),
+                nn.Conv2d(hidden_dim, hidden_dim, (1,kernel_size**2), (1,stride), (0,(kernel_size - 1) // 2), groups=hidden_dim, bias=False),                nn.BatchNorm2d(hidden_dim),
                 h_swish() if use_hs else nn.ReLU(inplace=True),
                 # Squeeze-and-Excite
                 SELayer(hidden_dim) if use_se else nn.Identity(),
@@ -138,8 +130,7 @@ class InvertedResidual(nn.Module):
                 nn.BatchNorm2d(hidden_dim),
                 h_swish() if use_hs else nn.ReLU(inplace=True),
                 # dw
-                nn.Conv2d(hidden_dim, hidden_dim, kernel_size, stride, (kernel_size - 1) // 2, groups=hidden_dim, bias=False) if not is_psd 
-                            else nn.Conv2d(hidden_dim, hidden_dim, (1,kernel_size), (1,stride), (0,(kernel_size - 1) // 2), groups=hidden_dim, bias=False),
+                nn.Conv2d(hidden_dim, hidden_dim, (1,kernel_size), (1,stride), (0,(kernel_size - 1) // 2), groups=hidden_dim, bias=False),
                 nn.BatchNorm2d(hidden_dim),
                 # Squeeze-and-Excite
                 SELayer(hidden_dim) if use_se else nn.Identity(),
@@ -157,9 +148,9 @@ class InvertedResidual(nn.Module):
             return x
 
 
-class MOBILENETV3(nn.Module):
+class MOBILENETV3_V2(nn.Module):
     def __init__(self, args, device):
-        super(MOBILENETV3, self).__init__()
+        super(MOBILENETV3_V2, self).__init__()
         # setting of inverted residual blocks
         # self.cfgs = cfgs
         self.args = args
@@ -208,8 +199,7 @@ class MOBILENETV3(nn.Module):
                                 ['sincnet', SINCNET_FEATURE(args=args,
                                                         num_eeg_channel=self.num_data_channel) # padding to 0 or (kernel_size-1)//2
                                                         ]])
-        
-        # building first layer
+
         if self.args.eeg_type == "bipolar":
             input_channel = _make_divisible(20 * self.width_mult, 8)
         elif self.args.eeg_type == "unipolar":
@@ -225,9 +215,17 @@ class MOBILENETV3(nn.Module):
         else:
             if self.enc_model == 'raw':
                 self.is_features = False
-                self.conv1 = conv_3x3_bn(1, input_channel, 2, self.is_psd)
+                self.conv1 = nn.Sequential(
+                    nn.Conv2d(1, input_channel, (1,51), (1,2), (0,25)),
+                    nn.BatchNorm2d(input_channel),
+                    h_swish()
+                )
             else:
-                self.conv1 = conv_3x3_bn(self.num_data_channel, input_channel, 2, self.is_psd)
+                self.conv1 = nn.Sequential(
+                    nn.Conv2d(1, input_channel, (7,21), (7,2), (0,10)),
+                    nn.BatchNorm2d(input_channel),
+                    h_swish()
+                )
     
 
         # building inverted residual blocks
@@ -244,8 +242,8 @@ class MOBILENETV3(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         output_channel = {'large': 1280, 'small': 1024}
         output_channel = _make_divisible(output_channel[mode] * self.width_mult, 8) if self.width_mult > 1.0 else output_channel[mode]
+        self.fc1 = nn.Linear(exp_size, output_channel)
         self.classifier = nn.Sequential(
-            nn.Linear(exp_size, output_channel),
             h_swish(),
             nn.Dropout(0.2),
             nn.Linear(output_channel, self.num_classes),
@@ -254,25 +252,22 @@ class MOBILENETV3(nn.Module):
         self._initialize_weights()
 
     def forward(self, x):
-        # print(f'0: {x.shape}')
         x = x.permute(0,2,1)
         
-        if self.is_features:
+        if self.args.enc_model != "raw":
             x = self.feature_extractor[self.enc_model](x)
+            if self.args.enc_model == "sincnet":
+                x = x.reshape(x.shape[0], 1, self.args.num_channel*self.args.sincnet_bandnum, x.shape[-1])
         else:
             x = torch.unsqueeze(x, 1)
-        # print('1 ', x.shape)
         x = self.conv1(x)
-        # print("2, ", x.shape)
         x = self.features(x)
-        # print("3, ", x.shape)
         x = self.conv(x)
-        # print("4, ", x.shape)
         x = self.avgpool(x)
-        # print("5, ", x.shape)
         x = x.view(x.size(0), -1)
+        x = self.fc1(x)
         x = self.classifier(x)
-        # exit(1)
+
         return x, 0
 
     def init_state(self, device):
