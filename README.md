@@ -1,6 +1,6 @@
 # Real-Time Seizure Detection using Electroencephalogram (EEG)
 
-This is the repository for ["Real-Time Seizure Detection using EEG: A Comprehensive Comparison of Recent Approaches under a Realistic Setting"](https://proceedings.mlr.press/v174/lee22a/lee22a.pdf). 
+This is the repository for ["Real-Time Seizure Detection using EEG: A Comprehensive Comparison of Recent Approaches under a Realistic Setting"](https://proceedings.mlr.press/v174/lee22a/lee22a.pdf). Checkout [pdf file](paper/Real-Time Seizure Detection using EEG-A Comprehensive Comparison of Recent Approaches under a Realistic Setting.pdf) of our paper
 
 - If you have used our code or referred to our result in your research, please cite:
 ```
