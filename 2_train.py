@@ -45,6 +45,10 @@ from builder.trainer import *
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 list_of_test_results_per_seed = []
 
+# define result class
+save_valid_results = experiment_results_validation(args)
+save_test_results = experiment_results(args)
+
 for seed_num in args.seed_list:
     args.seed = seed_num
     set_seeds(args)
@@ -143,41 +147,56 @@ for seed_num in args.seed_list:
                 model.train()
         pbar.update(1)
 
+    logger.val_result_only()
+    save_valid_results.results_all_seeds(logger.test_results)
+    
+    # get model checkpoint - end of train step
+    # initalize model (again)
+    del model
+    model = get_detector_model(args) 
+    val_per_epochs = 2
+
+    print("#################################################")
+    print("################# Test Begins ###################")
+    print("#################################################")
+    model = model(args, device).to(device)
+    logger = Logger(args)
+    # load model checkpoint  
+    if args.last:
+        ckpt_path = args.dir_result + '/' + args.project_name + '/ckpts/last_{}.pth'.format(str(n_fold))
+    elif args.best:
+        ckpt_path = args.dir_result + '/' + args.project_name + '/ckpts/best_{}.pth'.format(str(n_fold))
+
+    if not os.path.exists(ckpt_path):
+        print("Final model for test experiment doesn't exist...")
+        exit(1)
+    # load model & state
+    ckpt    = torch.load(ckpt_path, map_location=device)
+    state   = {k: v for k, v in ckpt['model'].items()}
+    model.load_state_dict(state)
+
+    # initialize test step
     model.eval()
     logger.evaluator.reset()
+    
     with torch.no_grad():
         for test_batch in tqdm(test_loader, total=len(test_loader), bar_format="{desc:<5}{percentage:3.0f}%|{bar:10}{r_bar}"):
             test_x, test_y, seq_lengths, target_lengths, aug_list, signal_name_list = test_batch
-            test_x = test_x.to(device)
-
+            test_x, test_y = test_x.to(device), test_y.to(device)
+            
             ### Model Structures
-            if args.task_type == "binary": 
-                model, _ = sliding_window_v1(args, iteration, test_x, test_y, seq_lengths, 
-                                            target_lengths, model, logger, device, scheduler,
-                                            optimizer, criterion, signal_name_list=signal_name_list, flow_type="test")    # margin_test , test
-            else:
-                print("Selected trainer is not prepared yet...")
-                exit(1)
+            model, _ = get_trainer(args, iteration, test_x, test_y, seq_lengths, 
+                                        target_lengths, model, logger, device, scheduler,
+                                        optimizer, criterion, signal_name_list=signal_name_list, flow_type="test")    # margin_test , test
 
     logger.test_result_only()
-    list_of_test_results_per_seed.append(logger.test_results)
     logger.writer.close()
-
-auc_list = []
-apr_list = []
-f1_list = []
-tpr_list = []
-tnr_list = []
-os.system("echo  \'#######################################\'")
-os.system("echo  \'##### Final test results per seed #####\'")
-os.system("echo  \'#######################################\'")
-for result, tpr, tnr in list_of_test_results_per_seed:    
-    os.system("echo  \'seed_case:{} -- auc: {}, apr: {}, f1_score: {}, tpr: {}, tnr: {}\'".format(str(result[0]), str(result[1]), str(result[2]), str(result[3]), str(tpr), str(tnr)))
-    auc_list.append(result[1])
-    apr_list.append(result[2])
-    f1_list.append(result[3])
-    tpr_list.append(tpr)
-    tnr_list.append(tnr)
-os.system("echo  \'Total average -- auc: {}, apr: {}, f1_score: {}, tnr: {}, tpr: {}\'".format(str(np.mean(auc_list)), str(np.mean(apr_list)), str(np.mean(f1_list)), str(np.mean(tpr_list)), str(np.mean(tnr_list))))
-os.system("echo  \'Total std -- auc: {}, apr: {}, f1_score: {}, tnr: {}, tpr: {}\'".format(str(np.std(auc_list)), str(np.std(apr_list)), str(np.std(f1_list)), str(np.std(tpr_list)), str(np.std(tnr_list))))
+    del model
     
+    # save test results
+    save_test_results.results_all_seeds(logger.test_results)
+
+# check: whether to save cross-validation results 
+if args.cross_fold_val:
+    save_test_results.results_per_cross_fold()
+    save_valid_results.results_per_cross_fold()
