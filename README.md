@@ -30,9 +30,8 @@ pip install -r requirements.txt
     
 To construct dataset with [TUH EEG dataset](https://www.isip.piconepress.com/projects/tuh_eeg/), you can download EEG Seizure Corpus in the website and save it to *$PATH_TO_EEG* and run: 
 ```
-python preproces.py --data_type train --cpu_num *available cpu numbers* --label_type  *tse or tse_bi* --save_directory *path to save preprocessed files* --samplerate *sample rate that you want to re-sample all files*
+python preproces.py --data_type train --cpu_num *available cpu numbers* --label_type  *tse or tse_bi* --save_directory *path to save preprocessed files* --samplerate *sample rate that you want to re-sample all files* --path_to_eeg *$PATH_TO_EEG*
 ```
-Before running the code, please change *$PATH_TO_EEG/* to your own path to EEG raw dataset.
 
 ## Model Training
 
