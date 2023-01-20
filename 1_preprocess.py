@@ -910,6 +910,7 @@ def generate_training_data_leadwise_tuh_dev(file):
 
 def main(args):
     save_directory = args.save_directory
+    os.makedirs(save_directory, exist_ok=True)
     data_type = args.data_type
     dataset = args.dataset
     label_type = args.label_type
