@@ -3,6 +3,7 @@ scipy
 numpy
 pandas
 matplotlib
+mne
 sklearn
 pyyaml
 openpyxl
