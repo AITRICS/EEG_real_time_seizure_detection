@@ -28,6 +28,7 @@ import torch
 import glob
 import pickle
 import random
+import re
 import mne
 from mne.io.edf.edf import _read_annotations_edf, _read_edf_header
 from itertools import groupby
@@ -122,8 +123,8 @@ def generate_training_data_leadwise_tuh_train(file):
         y_sampled += y_sampled[-1] * diff
 
     y_sampled_np = np.array(list(map(int, y_sampled)))
-    new_labels = []
-    new_labels_idxs = []
+    # new_labels = [] # unused
+    # new_labels_idxs = [] # unused
 
     ############################# part 3: slicing for easy training  #############################
     y_sampled = [
@@ -392,8 +393,14 @@ def generate_training_data_leadwise_tuh_train_final(file):
         file_name + "." + GLOBAL_DATA["label_type"], "r"
     )  # EX) 00007235_s003_t003.tse or 00007235_s003_t003.tse_bi
     y = label_file.readlines()
-    y = list(y[2:])
-    y_labels = list(set([i.split(" ")[2] for i in y]))
+    if "csv" in GLOBAL_DATA["label_type"]:
+        # added for csv labels
+        y = [
+            " ".join(row.split("\n")[0].split(",")[1:]) for row in y[6:]
+        ]  # TERM,...,1.000\n
+    else:
+        y = list(y[2:])
+    # y_labels = list(set([i.split(" ")[2] for i in y])) # unused
     signal_sample_rate = int(signal_headers[0]["sample_rate"])
     if sample_rate > signal_sample_rate:
         return
@@ -407,8 +414,13 @@ def generate_training_data_leadwise_tuh_train_final(file):
 
     # check if seizure patient or non-seizure patient
     patient_wise_dir = "/".join(file_name.split("/")[:-2])
-    patient_id = file_name.split("/")[-3]
-    edf_list = search_walk({"path": patient_wise_dir, "extension": ".tse_bi"})
+    # patient_id = file_name.split("/")[-3] # unused
+    print(f"patient_wise_dir: {patient_wise_dir}")
+    print(f'GLOBAL_DATA["label_type"]: {GLOBAL_DATA["label_type"]}')
+    edf_list = search_walk(
+        {"path": patient_wise_dir, "extension": f'.{GLOBAL_DATA["label_type"]}'}# added: extension->.extension
+    )
+    print(f"edf_list: {edf_list}")
     patient_bool = False
     for tse_bi_file in edf_list:
         label_file = open(
@@ -462,8 +474,8 @@ def generate_training_data_leadwise_tuh_train_final(file):
         y_sampled += y_sampled[-1] * diff
 
     y_sampled_np = np.array(list(map(int, y_sampled)))
-    new_labels = []
-    new_labels_idxs = []
+    # new_labels = [] # unused
+    # new_labels_idxs = [] # unused
 
     ############################# part 3: slicing for easy training  #############################
     y_sampled = [
@@ -494,7 +506,7 @@ def generate_training_data_leadwise_tuh_train_final(file):
         GLOBAL_DATA["min_binary_edge_seiz"] * GLOBAL_DATA["sample_rate"]
     )
 
-    label_order = [x[0] for x in groupby(y_sampled)]
+    # label_order = [x[0] for x in groupby(y_sampled)] # unused
     label_change_idxs = np.where(y_sampled_np[:-1] != y_sampled_np[1:])[0]
     label_change_idxs = np.append(label_change_idxs, np.array([len(y_sampled_np) - 1]))
 
@@ -504,7 +516,7 @@ def generate_training_data_leadwise_tuh_train_final(file):
     if len(y_sampled) < min_seg_len_label:
         return
     else:
-        label_count = {}
+        # label_count = {} # unused
         y_sampled_2nd = list(y_sampled)
         raw_data_2nd = raw_data
         while len(y_sampled) >= min_seg_len_label:
@@ -609,7 +621,7 @@ def generate_training_data_leadwise_tuh_train_final(file):
             else:
                 print("unexpected case")
                 exit(1)
-        if is_at_middle == True:
+        if is_at_middle:
             sliced_y = y_sampled_2nd[-min_seg_len_label:]
             sliced_raw_data = raw_data_2nd[-min_seg_len_raw:].permute(1, 0)
 
@@ -679,7 +691,7 @@ def generate_training_data_leadwise_tuh_dev(file):
     )  # EX) 00007235_s003_t003.tse or 00007235_s003_t003.tse_bi
     y = label_file.readlines()
     y = list(y[2:])
-    y_labels = list(set([i.split(" ")[2] for i in y]))
+    # y_labels = list(set([i.split(" ")[2] for i in y])) # unused
     signal_sample_rate = int(signal_headers[0]["sample_rate"])
     if sample_rate > signal_sample_rate:
         return
@@ -948,6 +960,11 @@ def main(args):
     eeg_data_directory = "{}/{}".format(args.path_to_eeg, data_type)
     # eeg_data_directory = "/mnt/aitrics_ext/ext01/shared/edf/tuh_final/{}".format(data_type)
 
+    assert label_type in (
+        "tse",
+        "tse_bi",
+        "csv_bi",
+    ), "Label type should be one of (tse, tse_bi, csv_bi), given {label_type}"
     if label_type == "tse":
         disease_labels = {
             "bckg": 0,
@@ -960,7 +977,7 @@ def main(args):
             "spsz": 7,
             "absz": 8,
         }
-    elif label_type == "tse_bi":
+    else:
         disease_labels = {"bckg": 0, "seiz": 1}
     disease_labels_inv = {v: k for k, v in disease_labels.items()}
 
@@ -993,6 +1010,24 @@ def main(args):
 
     target_dictionary = {0: 0}
     selected_diseases = []
+    label_exception = list(
+        set(args.disease_type)
+        - set(
+            [
+                "gnsz",
+                "fnsz",
+                "spsz",
+                "cpsz",
+                "absz",
+                "tnsz",
+                "tcsz",
+                "mysz",
+                "bckg",
+                "seiz",
+            ]
+        )
+    )
+    assert len(label_exception) == 0, f"Unexpected label identified: {label_exception}"
     for idx, i in enumerate(args.disease_type):
         selected_diseases.append(str(disease_labels[i]))
         target_dictionary[disease_labels[i]] = idx + 1
@@ -1074,12 +1109,7 @@ if __name__ == "__main__":
     )
 
     ##### Target Grouping #####
-    parser.add_argument(
-        "--disease_type",
-        type=list,
-        default=["gnsz", "fnsz", "spsz", "cpsz", "absz", "tnsz", "tcsz", "mysz"],
-        choices=["gnsz", "fnsz", "spsz", "cpsz", "absz", "tnsz", "tcsz", "mysz"],
-    )
+    parser.add_argument("--disease_type", type=str, nargs="+")
 
     ### for binary detector ###
     # key numbers represent index of --disease_type + 1  ### -1 is "not being used"
